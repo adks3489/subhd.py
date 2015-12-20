@@ -12,6 +12,7 @@ class SubHDDownloader(object):
     '''The class seeks and downloads subtitles from subhd.com
     '''
     def __init__(self):
+        self.base_url = 'http://subhd.com'
         self.dl_lookup_url = 'http://subhd.com/ajax/down_ajax'
         self.search_url = 'http://subhd.com/search/'
         self.subid_re = re.compile(r'^/a/(\d+)$')
@@ -82,6 +83,7 @@ class SubHDDownloader(object):
         except ValueError:
             print 'No subtitle download'
 
+        real_addr = self.base_url + real_addr
         sub_datastring = requests.get(real_addr).content
         if len(sub_datastring) < 1024:
             datatype = None
