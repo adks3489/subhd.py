@@ -2,6 +2,8 @@
 '''Main program for subhd.py
 '''
 import argparse
+
+import sys
 from guessit import guess_video_info
 from subhd_py.core import SubHDDownloader
 from subhd_py.compressor import ZIPFileHandler, RARFileHandler
@@ -41,7 +43,7 @@ def choose_subtitle(candidates):
     indexes = range(len(candidates))
     for i in indexes:
         item = candidates[i]
-        print '%s) %s (%s)' % (i+1, item.get('title'), item.get('org'))
+        print u'{0}) {1:.50} ({2})'.format(i+1, item.get('title'), item.get('org'))
     choice = None
     while not choice:
         try:
@@ -49,6 +51,9 @@ def choose_subtitle(candidates):
         except ValueError:
             print 'Error: only numbers accepted'
             continue
+        except EOFError:
+            print '\nAbort.'
+            sys.exit(0)
         if not choice - 1 in indexes:
             print 'Error: numbers not within the range'
             choice = None
@@ -87,7 +92,7 @@ def get_subtitle(keyword, is_filename=True, auto_download=False,
 
     results = DOWNLOADER.search(keyword)
     if not results:
-        print "No subtitle for %s" % keyword
+        print "No subtitle for {0}".format(keyword)
         return
 
     if not auto_download:
@@ -120,7 +125,7 @@ def get_subtitle(keyword, is_filename=True, auto_download=False,
         if not is_filename:
             filename = subtitle['name']
         out_file = filename.replace(filename.split('.')[-1],
-                                    'zh.%s' % subtitle['extension'])
+                                    'zh.{0}'.format(subtitle['extension']))
 
     with open(out_file, 'w') as subfile:
         subfile.write(subtitle['body'])
