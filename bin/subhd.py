@@ -5,8 +5,8 @@ import argparse
 
 import sys
 from guessit import guess_video_info
-from subhd_py.core import SubHDDownloader
 from subhd_py.compressor import ZIPFileHandler, RARFileHandler
+from subhd_py.core import SubHDDownloader
 from subhd_py.sanitizer import to_unicode, to_chs, to_cht, reset_index, set_utf8_without_bom
 
 EPILOG = '''
@@ -43,7 +43,7 @@ def choose_subtitle(candidates):
     indexes = range(len(candidates))
     for i in indexes:
         item = candidates[i]
-        print u'{0}) {1:.50} ({2})'.format(i+1, item.get('title'), item.get('org'))
+        print u'{0}) {1:.50} ({2})'.format(i + 1, item.get('title'), item.get('org'))
     choice = None
     while not choice:
         try:
@@ -105,31 +105,34 @@ def get_subtitle(keyword, is_filename=True, auto_download=False,
     file_handler = COMPRESSPR_HANDLER.get(datatype)
     compressor = file_handler(sub_data)
 
-    subtitle = {} # record for subtitle
+    subtitle = {}  # record for subtitle
     subtitle['name'], subtitle['body'] = compressor.extract_bestguess()
     subtitle['name'] = './' + subtitle['name'].split('/')[-1]
     subtitle['extension'] = subtitle['name'].split('.')[-1]
 
     # Chinese conversion
-    subtitle['body'] = to_unicode(subtitle['body']) # Unicode object
+    subtitle['body'] = to_unicode(subtitle['body'])  # Unicode object
     conv_func = CHICONV.get(chiconv_type)
     subtitle['body'] = conv_func(subtitle['body'])
 
     if subtitle['extension'] == 'srt':
         subtitle['body'] = reset_index(subtitle['body'])
 
-    subtitle['body'] = set_utf8_without_bom(subtitle['body']) # Plain string
-    subtitle['body'] = subtitle['body'].replace('\r\n', '\n') # Unix-style line endings
+    subtitle['body'] = set_utf8_without_bom(subtitle['body'])  # Plain string
+    subtitle['body'] = subtitle['body'].replace('\r\n', '\n')  # Unix-style line endings
 
     if not out_file:
         if not is_filename:
             filename = subtitle['name']
-        out_file = filename.replace(filename.split('.')[-1],
-                                    'zh.{0}'.format(subtitle['extension']))
+        out_file = rreplace(filename, filename.split('.')[-1],
+                            'zh.{0}'.format(subtitle['extension']), 1)
 
     with open(out_file, 'w') as subfile:
         subfile.write(subtitle['body'])
     return
+
+def rreplace(s, old, new, occurrence):
+    return new.join(s.rsplit(old, occurrence))
 
 def tongwen_check(value):
     '''TongWen conversion type check.
@@ -162,7 +165,7 @@ def main():
                             help='Type of operation, either \'zhs\' or \'zht\'')
     arg_parser.add_argument('-o', '--output',
                             help='Specify destination filename, default\'s prefix\n' \
-                            ' is the same as filename')
+                                 ' is the same as filename')
     arg_parser.add_argument('keyword', nargs='+',
                             help='Specify source filename or keyword string')
 
