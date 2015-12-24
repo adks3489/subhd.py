@@ -83,7 +83,6 @@ class SubHDDownloader(object):
         except ValueError:
             print 'No subtitle download'
 
-        real_addr = self.base_url + real_addr
         sub_datastring = requests.get(real_addr).content
         if len(sub_datastring) < 1024:
             datatype = None
