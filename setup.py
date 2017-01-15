@@ -19,7 +19,7 @@ setup(
     install_requires = [
         'beautifulsoup4==4.3.2',
         'chardet==2.3.0',
-        'guessit==0.9.4',
+        'guessit==2.1.1',
         'pysrt==1.0.1',
         'rarfile==2.7',
         'requests==2.6.0',

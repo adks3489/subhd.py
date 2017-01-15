@@ -109,7 +109,8 @@ def to_unicode(sub_str):
     encoding = chardet.detect(sub_str).get('encoding')
     if encoding:
         sub_unicode = unicode(sub_str, encoding, 'ignore')
-    return sub_unicode
+        return sub_unicode
+    return sub_str
 
 def to_cht(sub_unicode):
     '''Convert any Chinese unicode strings to Tradtional Chinese

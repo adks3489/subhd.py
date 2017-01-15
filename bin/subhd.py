@@ -4,7 +4,8 @@
 import argparse
 
 import sys
-from guessit import guess_video_info
+import StringIO
+from guessit import guessit
 from subhd_py.compressor import ZIPFileHandler, RARFileHandler
 from subhd_py.core import SubHDDownloader
 from subhd_py.sanitizer import to_unicode, to_chs, to_cht, reset_index, set_utf8_without_bom
@@ -60,18 +61,79 @@ def choose_subtitle(candidates):
     candidate = candidates[choice - 1]
     return candidate
 
-def get_guessed_video_name(video_name):
+def auto_choose_subtitle(candidates, video_info, skip_count):
+    if video_info.get('type') != 'episode':
+        return candidates[0]
+    count = 0
+    for sub in candidates:
+        if sub.get('tvlist') is not None:
+            if sub.get('tvlist') == "S%.2dE%.2d" % (video_info.get('season'), video_info.get('episode')):
+                if count >= skip_count:
+                    return sub
+                count = count + 1
+    return candidates[0]
+
+def get_guessed_video_info(video_name):
     '''Parse the video info from the filename
 
     Args:
         video_name: the filename of the video
     Returns:
-        keyword: return video title, usually as movie name,
-                 otherwise the series title, usually as drama name.
+        video_info: return video_info and searchname
 
     '''
-    video_info = guess_video_info(video_name)
-    return video_info.get('title') or video_info.get('series')
+    video_info = guessit(video_name)
+    if video_info.get('type') == 'episode':
+        fullname = "%s.S%.2dE%.2d" % (video_info.get('title'),
+                                           video_info.get('season'),
+                                           video_info.get('episode'),)
+        #if video_info.get('format') is not None:
+        #    fullname += "." + video_info.get('format')
+        #if video_info.get('release_group') is not None:
+        #    fullname += "." + video_info.get('release_group')
+        video_info['keyword'] = fullname
+    else:
+        video_info['keyword'] = video_info.get('title') or video_info.get('series')
+    return video_info
+
+def process_subtitle(datatype, sub_data, chiconv_type):
+    subtitle = {}  # record for subtitle
+    
+    # Extract sub
+    file_handler = COMPRESSPR_HANDLER.get(datatype)
+    if file_handler is not None:
+        compressor = file_handler(sub_data)
+        subtitle['name'], subtitle['body'] = compressor.extract_bestguess()
+        subtitle['name'] = './' + subtitle['name'].split('/')[-1]
+    else:
+        if datatype not in {'srt', 'ssa', 'ass'}:
+            raise TypeError("Unknown type %s" % (datatype) )
+        subtitle['name'] = keyword + datatype
+        subtitle['body'] = sub_data.getvalue()
+    subtitle['extension'] = subtitle['name'].split('.')[-1]
+
+    # Chinese conversion
+    subtitle['body'] = to_unicode(subtitle['body'])  # Unicode object
+    conv_func = CHICONV.get(chiconv_type)
+    subtitle['body'] = conv_func(subtitle['body'])
+
+    if subtitle['extension'] == 'srt':
+        subtitle['body'] = reset_index(subtitle['body'])
+
+    subtitle['body'] = set_utf8_without_bom(subtitle['body'])  # Plain string
+    subtitle['body'] = subtitle['body'].replace('\r\n', '\n')  # Unix-style line endings
+    return subtitle
+
+def write_subtitle(subtitle, is_filename, filename, out_file):
+    if not out_file:
+        if not is_filename:
+            filename = subtitle['name']
+        out_file = rreplace(filename, filename.split('.')[-1],
+                            'zh.{0}'.format(subtitle['extension']), 1)
+
+    with open(out_file, 'w') as subfile:
+        subfile.write(subtitle['body'])
+    return
 
 def get_subtitle(keyword, is_filename=True, auto_download=False,
                  chiconv_type='zht', out_file=None):
@@ -88,7 +150,8 @@ def get_subtitle(keyword, is_filename=True, auto_download=False,
     '''
     if is_filename:
         filename = keyword
-        keyword = get_guessed_video_name(filename)
+        video_info = get_guessed_video_info(filename)
+        keyword = video_info.get('keyword')
 
     results = DOWNLOADER.search(keyword)
     if not results:
@@ -97,38 +160,22 @@ def get_subtitle(keyword, is_filename=True, auto_download=False,
 
     if not auto_download:
         target = choose_subtitle(results)
+        datatype, sub_data = DOWNLOADER.download(target.get('id'))
+        subtitle = process_subtitle(datatype, sub_data, chiconv_type)
+        write_subtitle(subtitle, is_filename, filename, out_file)
     else:
-        target = results[0]
-
-    # Download sub here.
-    datatype, sub_data = DOWNLOADER.download(target.get('id'))
-    file_handler = COMPRESSPR_HANDLER.get(datatype)
-    compressor = file_handler(sub_data)
-
-    subtitle = {}  # record for subtitle
-    subtitle['name'], subtitle['body'] = compressor.extract_bestguess()
-    subtitle['name'] = './' + subtitle['name'].split('/')[-1]
-    subtitle['extension'] = subtitle['name'].split('.')[-1]
-
-    # Chinese conversion
-    subtitle['body'] = to_unicode(subtitle['body'])  # Unicode object
-    conv_func = CHICONV.get(chiconv_type)
-    subtitle['body'] = conv_func(subtitle['body'])
-
-    if subtitle['extension'] == 'srt':
-        subtitle['body'] = reset_index(subtitle['body'])
-
-    subtitle['body'] = set_utf8_without_bom(subtitle['body'])  # Plain string
-    subtitle['body'] = subtitle['body'].replace('\r\n', '\n')  # Unix-style line endings
-
-    if not out_file:
-        if not is_filename:
-            filename = subtitle['name']
-        out_file = rreplace(filename, filename.split('.')[-1],
-                            'zh.{0}'.format(subtitle['extension']), 1)
-
-    with open(out_file, 'w') as subfile:
-        subfile.write(subtitle['body'])
+        try_count = 0;
+        while try_count < len(results):
+            try:
+                target = auto_choose_subtitle(results, video_info, try_count)
+                datatype, sub_data = DOWNLOADER.download(target.get('id'))
+                subtitle = process_subtitle(datatype, sub_data, chiconv_type)
+                write_subtitle(subtitle, is_filename, filename, out_file)
+                print("OK")
+                return
+            except TypeError:
+                try_count = try_count + 1
+                print("Error: trying next(%d)" % (try_count+1))
     return
 
 def rreplace(s, old, new, occurrence):

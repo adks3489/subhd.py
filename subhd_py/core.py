@@ -54,7 +54,9 @@ class SubHDDownloader(object):
                 match = self.info_re.search(item_text)
                 if match:
                     item['format'], item['version'] = match.groups()
-
+                tvlist = i.find(class_='tvlist')
+                if tvlist is not None:
+                    item['tvlist'] = tvlist.getText()
                 if item != {}:
                     items.append(item)
             except AttributeError: # The field might be '\n', ' ' or whatever
@@ -91,7 +93,8 @@ class SubHDDownloader(object):
         elif sub_datastring[:2] == 'PK':
             datatype = 'zip'
         else:
-            datatype = 'srt'
+            datatype = real_addr.rsplit('.', 1)[1]
+            #datatype = 'srt'
 
         sub_buff = StringIO()
         sub_buff.write(sub_datastring)
