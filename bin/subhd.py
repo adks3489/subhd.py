@@ -136,7 +136,7 @@ def write_subtitle(subtitle, is_filename, filename, out_file):
     return
 
 def get_subtitle(keyword, is_filename=True, auto_download=False,
-                 chiconv_type='zht', out_file=None):
+                 chiconv_type='zht', out_file=None, use_filename=False):
     '''The main function of the program.
 
     Args:
@@ -151,7 +151,10 @@ def get_subtitle(keyword, is_filename=True, auto_download=False,
     if is_filename:
         filename = keyword
         video_info = get_guessed_video_info(filename)
-        keyword = video_info.get('keyword')
+        if use_filename:
+            keyword = filename.split('/')[-1][0:-4]
+        else:
+            keyword = video_info.get('keyword')
 
     results = DOWNLOADER.search(keyword)
     if not results:
@@ -206,6 +209,8 @@ def main():
                                          formatter_class=argparse.RawTextHelpFormatter)
     arg_parser.add_argument('-r', '--raw', action='store_true',
                             help='Treat keyword as raw string instead of filename')
+    arg_parser.add_argument('-f', '--namefirst', action='store_true',
+                            help='Try filename first')
     arg_parser.add_argument('-a', '--auto', action='store_true',
                             help='Download subtitle without prompting (best guess)')
     arg_parser.add_argument('-t', '--type', type=tongwen_check, default='zht',
@@ -224,6 +229,11 @@ def main():
             keywords = args.keyword
 
         for keyword in keywords:
+            result = False
+            if args.namefirst:
+                result = get_subtitle(keyword, is_filename=(not args.raw), auto_download=args.auto, chiconv_type=args.type, out_file=args.output, use_filename=True)
+            if result is True:
+                continue
             get_subtitle(keyword, is_filename=(not args.raw),
                          auto_download=args.auto,
                          chiconv_type=args.type, out_file=args.output)
