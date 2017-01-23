@@ -103,7 +103,7 @@ def process_subtitle(datatype, sub_data, chiconv_type):
     file_handler = COMPRESSPR_HANDLER.get(datatype)
     if file_handler is not None:
         compressor = file_handler(sub_data)
-        subtitle['name'], subtitle['body'] = compressor.extract_bestguess()
+        subtitle['name'], subtitle['body'] = compressor.extract_bestguess(chiconv_type)
         subtitle['name'] = './' + subtitle['name'].split('/')[-1]
     else:
         if datatype not in {'srt', 'ssa', 'ass'}:

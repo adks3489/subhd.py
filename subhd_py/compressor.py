@@ -50,14 +50,26 @@ class BaseCompressedFileHandler(object):
         raw_subfile.close()
         return raw_sub
 
-    def extract_bestguess(self):
+    def extract_bestguess(self, conv_type = 'zht'):
         '''Extract subtitle by choosing the largest one.
 
         Returns:
             raw_sub: the string data of the subtitle.
         '''
         info = self.list_info()
-        candidate = max(info, key=lambda x: x['size'])
+        #candidate = max(info, key=lambda x: x['size'])
+        def extract_score(filename, conv_type = 'zht'):
+            point = 0
+            if filename.split('.')[-1] in ('srt', 'ssa', 'ass'):
+                point = point + 1 
+            convs = ('cht', 'zht')
+            if conv_type == 'zhs':
+               convs = ('chs', 'zhs')
+            if filename.split('.')[-2] in convs:
+                point = point + 1
+            return point
+
+        candidate = max(info, key=lambda x: extract_score(x['name'] ,conv_type))
         return (candidate['name'], self.extract(candidate['name']))
 
 class RARFileHandler(BaseCompressedFileHandler):
