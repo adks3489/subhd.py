@@ -62,7 +62,7 @@ def choose_subtitle(candidates):
     return candidate
 
 def auto_choose_subtitle(candidates, video_info, skip_count):
-    if video_info.get('type') != 'episode':
+    if video_info is None or video_info.get('type') != 'episode':
         return candidates[0]
     count = 0
     for sub in candidates:
@@ -156,7 +156,7 @@ def get_subtitle(keyword, is_filename=True, auto_download=False,
     results = DOWNLOADER.search(keyword)
     if not results:
         print "No subtitle for {0}".format(keyword)
-        return
+        return False
 
     if not auto_download:
         target = choose_subtitle(results)
@@ -172,7 +172,7 @@ def get_subtitle(keyword, is_filename=True, auto_download=False,
                 subtitle = process_subtitle(datatype, sub_data, chiconv_type)
                 write_subtitle(subtitle, is_filename, filename, out_file)
                 print("OK")
-                return
+                return True
             except TypeError:
                 try_count = try_count + 1
                 print("Error: trying next(%d)" % (try_count+1))
